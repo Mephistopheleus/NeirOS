@@ -1,0 +1,90 @@
+2026-04-28 16:23:04.098 | INFO     | core.logger:setup_logger:39 - 📝 Logger initialized. Console: INFO, File: DEBUG+
+2026-04-28 16:23:04.099 | INFO     | __main__:<module>:10 - 🌱 Initializing TradingBot environment...
+2026-04-28 16:23:04.123 | INFO     | core.core:start:18 - 🚀 Starting TradingBot Core...
+2026-04-28 16:23:04.125 | INFO     | core.bus:start:18 -  PUB Socket bound on port 5555
+2026-04-28 16:23:04.128 | INFO     | core.bus:start:23 - 📥 REP Socket bound on port 5556
+2026-04-28 16:23:04.128 | INFO     | core.loader:load_all:11 - 🔍 Scanning for modules...
+2026-04-28 16:23:28.559 | INFO     | core.loader:load_all:25 - ✅ Loaded module: backtest_engine
+2026-04-28 16:23:28.559 | INFO     | core.loader:load_all:25 - ✅ Loaded module: analyzer_math
+2026-04-28 16:23:28.969 | INFO     | core.loader:load_all:25 - ✅ Loaded module: aggregator
+2026-04-28 16:23:28.969 | INFO     | core.loader:load_all:25 - ✅ Loaded module: resolver_multitf
+2026-04-28 16:23:28.969 | INFO     | core.loader:load_all:25 - ✅ Loaded module: trade_calc
+2026-04-28 16:23:28.969 | INFO     | core.loader:load_all:25 - ✅ Loaded module: risk_manager
+2026-04-28 16:23:28.969 | INFO     | core.core:start:28 - 🔗 Wiring pipeline modules...
+2026-04-28 16:23:28.970 | INFO     | core.data_rotator:__init__:17 - 💾 DataRotator initialized for DOGEUSDT (flush every 50 rows)
+2026-04-28 16:23:28.976 | INFO     | modules.aggregator:start:24 - 🔄 Aggregator starting for DOGEUSDT on ['5m', '15m', '1h', '4h']...
+2026-04-28 16:23:28.977 | INFO     | modules.aggregator:_load_history:37 - 📥 Loading REST history for 5m...
+2026-04-28 16:23:28.977 | INFO     | modules.api_binance.rest_client:fetch_history:25 - 📥 Fetching history for DOGEUSDT 5m (target: 500)...
+2026-04-28 16:23:29.473 | SUCCESS  | modules.api_binance.rest_client:fetch_history:53 - ✅ History loaded: 500 candles
+2026-04-28 16:23:29.513 | DEBUG    | core.data_rotator:flush:33 - 💾 Flushed to data/DOGEUSDT.csv
+2026-04-28 16:23:29.518 | DEBUG    | core.data_rotator:flush:33 - 💾 Flushed to data/DOGEUSDT.csv
+2026-04-28 16:23:29.523 | DEBUG    | core.data_rotator:flush:33 - 💾 Flushed to data/DOGEUSDT.csv
+2026-04-28 16:23:29.527 | DEBUG    | core.data_rotator:flush:33 - 💾 Flushed to data/DOGEUSDT.csv
+2026-04-28 16:23:29.531 | DEBUG    | core.data_rotator:flush:33 - 💾 Flushed to data/DOGEUSDT.csv
+2026-04-28 16:23:29.535 | DEBUG    | core.data_rotator:flush:33 - 💾 Flushed to data/DOGEUSDT.csv
+2026-04-28 16:23:29.540 | DEBUG    | core.data_rotator:flush:33 - 💾 Flushed to data/DOGEUSDT.csv
+2026-04-28 16:23:29.544 | DEBUG    | core.data_rotator:flush:33 - 💾 Flushed to data/DOGEUSDT.csv
+2026-04-28 16:23:29.549 | DEBUG    | core.data_rotator:flush:33 - 💾 Flushed to data/DOGEUSDT.csv
+2026-04-28 16:23:29.555 | DEBUG    | core.data_rotator:flush:33 - 💾 Flushed to data/DOGEUSDT.csv
+2026-04-28 16:23:29.555 | INFO     | modules.aggregator:_load_history:51 - ✅ History 5m: 500 candles queued.
+2026-04-28 16:23:29.556 | DEBUG    | modules.api_binance.ws_client:_run:32 - 🔌 Connecting WS: wss://stream.binance.com:9443/ws/dogeusdt@kline_5m
+2026-04-28 16:23:29.556 | INFO     | modules.api_binance.ws_client:start:25 - 👂 WS Listener started for dogeusdt 5m
+2026-04-28 16:23:29.556 | INFO     | modules.aggregator:_load_history:37 - 📥 Loading REST history for 15m...
+2026-04-28 16:23:29.556 | INFO     | modules.api_binance.rest_client:fetch_history:25 - 📥 Fetching history for DOGEUSDT 15m (target: 500)...
+2026-04-28 16:23:30.011 | SUCCESS  | modules.api_binance.rest_client:fetch_history:53 - ✅ History loaded: 500 candles
+2026-04-28 16:23:30.045 | INFO     | modules.aggregator:_load_history:51 - ✅ History 15m: 500 candles queued.
+2026-04-28 16:23:30.046 | DEBUG    | modules.api_binance.ws_client:_run:32 - 🔌 Connecting WS: wss://stream.binance.com:9443/ws/dogeusdt@kline_15m
+2026-04-28 16:23:30.046 | INFO     | modules.api_binance.ws_client:start:25 - 👂 WS Listener started for dogeusdt 15m
+2026-04-28 16:23:30.047 | INFO     | modules.aggregator:_load_history:37 - 📥 Loading REST history for 1h...
+2026-04-28 16:23:30.047 | INFO     | modules.api_binance.rest_client:fetch_history:25 - 📥 Fetching history for DOGEUSDT 1h (target: 500)...
+2026-04-28 16:23:30.246 | INFO     | modules.api_binance.ws_client:on_open:52 - ✅ WS Connected: dogeusdt 5m
+2026-04-28 16:23:30.493 | SUCCESS  | modules.api_binance.rest_client:fetch_history:53 - ✅ History loaded: 500 candles
+2026-04-28 16:23:30.530 | INFO     | modules.aggregator:_load_history:51 - ✅ History 1h: 500 candles queued.
+2026-04-28 16:23:30.531 | DEBUG    | modules.api_binance.ws_client:_run:32 - 🔌 Connecting WS: wss://stream.binance.com:9443/ws/dogeusdt@kline_1h
+2026-04-28 16:23:30.532 | INFO     | modules.api_binance.ws_client:start:25 - 👂 WS Listener started for dogeusdt 1h
+2026-04-28 16:23:30.532 | INFO     | modules.aggregator:_load_history:37 - 📥 Loading REST history for 4h...
+2026-04-28 16:23:30.533 | INFO     | modules.api_binance.rest_client:fetch_history:25 - 📥 Fetching history for DOGEUSDT 4h (target: 500)...
+2026-04-28 16:23:30.766 | INFO     | modules.api_binance.ws_client:on_open:52 - ✅ WS Connected: dogeusdt 15m
+2026-04-28 16:23:30.979 | SUCCESS  | modules.api_binance.rest_client:fetch_history:53 - ✅ History loaded: 500 candles
+2026-04-28 16:23:31.006 | INFO     | modules.aggregator:_load_history:51 - ✅ History 4h: 500 candles queued.
+2026-04-28 16:23:31.007 | DEBUG    | modules.api_binance.ws_client:_run:32 - 🔌 Connecting WS: wss://stream.binance.com:9443/ws/dogeusdt@kline_4h
+2026-04-28 16:23:31.007 | INFO     | modules.api_binance.ws_client:start:25 - 👂 WS Listener started for dogeusdt 4h
+2026-04-28 16:23:31.008 | SUCCESS  | modules.aggregator:start:34 - ✅ Aggregator running (Multi-TF).
+2026-04-28 16:23:31.008 | DEBUG    | core.core:start:90 - ✅ Pipeline stage started: aggregator
+2026-04-28 16:23:31.008 | INFO     | modules.analyzer_math:start:56 - 🧠 AnalyzerMath starting for DOGEUSDT...
+2026-04-28 16:23:31.231 | INFO     | modules.analyzer_math:_load_history:75 - 🔥 Warmed up 5m buffer with 3006 candles.
+2026-04-28 16:23:31.236 | SUCCESS  | modules.analyzer_math:start:61 - ✅ AnalyzerMath running.
+2026-04-28 16:23:31.237 | DEBUG    | core.core:start:90 - ✅ Pipeline stage started: analyzer
+2026-04-28 16:23:31.237 | INFO     | modules.resolver_multitf:start:29 - ⚖️ MultiTFResolver starting for DOGEUSDT...
+2026-04-28 16:23:31.238 | ERROR    | modules.analyzer_math:_analysis_loop:108 - ❌ Analysis loop error: Length of values (300) does not match length of index (301)
+2026-04-28 16:23:31.238 | SUCCESS  | modules.resolver_multitf:start:33 - ✅ MultiTFResolver running.
+2026-04-28 16:23:31.239 | DEBUG    | core.core:start:90 - ✅ Pipeline stage started: resolver
+2026-04-28 16:23:31.239 | INFO     | modules.trade_calc:start:44 - 🧮 TradeCalc starting for DOGEUSDT...
+2026-04-28 16:23:31.239 | SUCCESS  | modules.trade_calc:start:47 - ✅ TradeCalc running.
+2026-04-28 16:23:31.240 | DEBUG    | core.core:start:90 - ✅ Pipeline stage started: trade_calc
+2026-04-28 16:23:31.240 | INFO     | modules.risk_manager:start:47 - 🛡️ RiskManager starting for DOGEUSDT...
+2026-04-28 16:23:31.245 | SUCCESS  | modules.risk_manager:start:50 - ✅ RiskManager running.
+2026-04-28 16:23:31.245 | DEBUG    | core.core:start:90 - ✅ Pipeline stage started: risk_mgr
+2026-04-28 16:23:31.245 | SUCCESS  | core.core:start:92 - 📦 Total modules loaded: 6
+2026-04-28 16:23:31.245 | SUCCESS  | core.core:start:93 - ✨ SYSTEM READY. Press Ctrl+C to stop.
+2026-04-28 16:23:31.269 | INFO     | modules.api_binance.ws_client:on_open:52 - ✅ WS Connected: dogeusdt 1h
+2026-04-28 16:23:31.738 | INFO     | modules.api_binance.ws_client:on_open:52 - ✅ WS Connected: dogeusdt 4h
+2026-04-28 16:24:31.777 | DEBUG    | modules.analyzer_math:_publish:358 - 📊 Published forecast | Conf: 0.88 | Trend: down
+2026-04-28 16:24:33.635 | INFO     | core.core:_signal_handler:107 - 👋 Shutdown signal received.
+2026-04-28 16:24:33.635 | INFO     | core.core:stop:111 - 🛑 Stopping Core...
+2026-04-28 16:24:33.635 | INFO     | modules.risk_manager:stop:163 - 🛑 RiskManager stopped.
+2026-04-28 16:24:33.635 | DEBUG    | core.core:stop:118 - ✅ Stopped: risk_mgr
+2026-04-28 16:24:33.636 | INFO     | modules.trade_calc:stop:216 - 🛑 TradeCalc stopped.
+2026-04-28 16:24:33.636 | DEBUG    | core.core:stop:118 - ✅ Stopped: trade_calc
+2026-04-28 16:24:33.636 | INFO     | modules.resolver_multitf:stop:174 - 🛑 MultiTFResolver stopped.
+2026-04-28 16:24:33.636 | DEBUG    | core.core:stop:118 - ✅ Stopped: resolver
+2026-04-28 16:24:33.636 | INFO     | modules.analyzer_math:stop:364 - 🛑 AnalyzerMath stopped.
+2026-04-28 16:24:33.636 | DEBUG    | core.core:stop:118 - ✅ Stopped: analyzer
+2026-04-28 16:24:33.636 | INFO     | modules.aggregator:stop:79 - 🛑 Stopping Aggregator...
+2026-04-28 16:24:34.181 | WARNING  | modules.api_binance.ws_client:on_close:75 - ⚠️ WS Closed: None None
+2026-04-28 16:24:34.481 | WARNING  | modules.api_binance.ws_client:on_close:75 - ⚠️ WS Closed: None None
+2026-04-28 16:24:34.729 | WARNING  | modules.api_binance.ws_client:on_close:75 - ⚠️ WS Closed: None None
+2026-04-28 16:24:34.783 | INFO     | core.data_rotator:force_close:40 - 💾 DataRotator closed.
+2026-04-28 16:24:34.783 | INFO     | modules.aggregator:stop:84 - ✅ Aggregator stopped.
+2026-04-28 16:24:34.783 | DEBUG    | core.core:stop:118 - ✅ Stopped: aggregator
+2026-04-28 16:24:42.705 | WARNING  | modules.api_binance.ws_client:on_close:75 - ⚠️ WS Closed: None None
