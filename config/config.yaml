@@ -1,0 +1,36 @@
+system:
+  name: "TradingBot DOGEUSDT"
+  log_level: "INFO"
+  
+environment:
+  python_min: "3.10"
+  cuda_required: true
+  
+network:
+  zmq_pub_port: 5555
+  zmq_rep_port: 5556
+
+criteria:
+  min_pnl: 5.0
+  min_winrate: 55.0
+  required_success_count: 5
+  
+trade_calc:
+  risk_per_trade_pct: 0.01
+  min_rr: 1.5
+  min_net_rr: 1.2
+  atr_stop_mult: 0.8
+  atr_target_mult: 3.0
+  fee_taker: 0.001
+  slippage_pct: 0.0005
+  min_notional: 5.0
+  initial_balance: 1000.0
+
+risk_manager:
+  max_open_positions: 1
+  max_daily_drawdown_pct: 0.03
+  max_consecutive_losses: 3
+  cooldown_min: 15
+  min_trade_interval_min: 5
+  min_balance_usdt: 100.0
+  initial_balance: 1000.0
