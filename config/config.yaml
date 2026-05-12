@@ -34,3 +34,8 @@ risk_manager:
   min_trade_interval_min: 5
   min_balance_usdt: 100.0
   initial_balance: 1000.0
+
+binance:
+  # Ключи от Binance Testnet (получить на https://testnet.binance.vision)
+  testnet_api_key: "mYVqkHL4mSwEiHrHC6PaurPUHOV7auYwXXpkSmMX7hSSY8KT7teRmbQV6BY9YD3i"
+  testnet_secret: "ym3B6HkI6ervEsc4We0jr47O51tueW8CRTqpU6TxbpwzKsxAtLWtGKtbeUQ86aBf"
