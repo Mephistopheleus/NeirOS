@@ -1,0 +1,10 @@
+2026-05-12 08:04:24.998 | INFO     | core.logger:setup_logger:39 - 📝 Logger initialized. Console: INFO, File: DEBUG+
+2026-05-12 08:04:24.999 | INFO     | core.bus:start:18 -  PUB Socket bound on port 5555
+2026-05-12 08:04:24.999 | INFO     | core.bus:start:23 - 📥 REP Socket bound on port 5556
+2026-05-12 08:04:25.000 | INFO     | modules.analyzer_math:start:56 - 🧠 AnalyzerMath starting for DOGEUSDT...
+2026-05-12 08:04:25.402 | INFO     | modules.analyzer_math:_load_history:75 - 🔥 Warmed up 5m buffer with 3006 candles.
+2026-05-12 08:04:25.414 | SUCCESS  | modules.analyzer_math:start:61 - ✅ AnalyzerMath running.
+2026-05-12 08:04:25.415 | INFO     | __main__:<module>:23 - ⏳ Waiting for forecasts (approx 1 min)...
+2026-05-12 08:04:25.622 | DEBUG    | modules.analyzer_math:_publish:358 - 📊 Published forecast | Conf: 0.925 | Trend: down
+2026-05-12 08:04:25.623 | INFO     | __main__:<module>:27 - 📦 ANALYSIS.FORECAST | Conf: 0.925 | Trend: down | Pred: 0.099253
+2026-05-12 08:04:55.615 | INFO     | modules.analyzer_math:stop:364 - 🛑 AnalyzerMath stopped.
