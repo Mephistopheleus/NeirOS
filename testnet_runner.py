@@ -62,12 +62,31 @@ class TestNetRunner:
         
         # Настройки стратегии
         self.confidence_threshold = 0.60  # Минимальная уверенность для входа
-        self.balance_start = self.cfg.get("trade_calc", {}).get("initial_balance", 1000.0)
+        self.balance_start = 200.0  # Выделенный баланс для работы (USDT)
         self.max_position_pct = 0.05  # Максимум 5% от баланса на сделку
         self.min_conf_for_max_size = 0.85  # При какой уверенности берём макс. объем
         self.fee_taker = self.cfg.get("trade_calc", {}).get("fee_taker", 0.001)
         self.slippage_pct = self.cfg.get("trade_calc", {}).get("slippage_pct", 0.0005)
         self.min_profit_threshold = 2.0  # Мин. прибыль в USDT, чтобы сделка имела смысл
+        
+        # Телеметрия сессии
+        self.session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.session_stats = {
+            "session_id": self.session_id,
+            "start_time": datetime.now().isoformat(),
+            "allocated_balance": self.balance_start,
+            "current_balance": self.balance_start,
+            "total_trades": 0,
+            "successful_trades": 0,
+            "failed_trades": 0,
+            "rejected_trades": 0,
+            "rejection_reasons": {},
+            "open_trades": [],
+            "closed_trades": [],
+            "total_pnl": 0.0,
+            "max_drawdown": 0.0,
+            "winrate": 0.0
+        }
         
         self.running = False
         self.last_order_time = 0
@@ -143,17 +162,19 @@ class TestNetRunner:
                     logger.error(f"❌ Ошибка в слушателе прогнозов: {e}")
                 time.sleep(1)
     
-    def _calculate_position_size(self, confidence: float, current_balance: float, stop_dist_pct: float) -> float:
+    def _calculate_position_size(self, confidence: float, current_balance: float, stop_dist_pct: float) -> tuple[float, str]:
         """
         Рассчитывает объем позиции на основе уверенности и риска.
+        Возвращает кортеж: (объем, причина отказа или "OK")
         - Объем зависит от уверенности (линейно от 60% до 85%)
         - Не более 5% от баланса
         - Проверяет рентабельность: PnL > комиссии + спред
         """
         # 1. Базовый объем: линейная зависимость от уверенности
-        # При 60% -> 20% от макс. объема, при 85% -> 100% от макс. объема
         if confidence < self.confidence_threshold:
-            return 0.0
+            reason = f"Низкая уверенность: {confidence:.3f} < {self.confidence_threshold}"
+            self._log_rejection(reason)
+            return 0.0, reason
         
         conf_factor = (confidence - self.confidence_threshold) / (self.min_conf_for_max_size - self.confidence_threshold)
         conf_factor = min(1.0, max(0.2, conf_factor))  # От 20% до 100%
@@ -166,7 +187,6 @@ class TestNetRunner:
         fees_usdt = base_position_usdt * total_cost_pct
         
         # 3. Потенциальная прибыль (при срабатывании TP)
-        # SL = 2%, TP обычно 4-6%, берем консервативно 3%
         potential_profit_pct = stop_dist_pct * 2.0  # R:R ~ 2:1
         potential_profit_usdt = base_position_usdt * potential_profit_pct
         
@@ -174,12 +194,23 @@ class TestNetRunner:
         net_profit_usdt = potential_profit_usdt - fees_usdt
         
         if net_profit_usdt < self.min_profit_threshold:
-            logger.debug(f"⛔ Сделка нерентабельна: PnL={net_profit_usdt:.2f} USDT < {self.min_profit_threshold} USDT (комиссии: {fees_usdt:.2f})")
-            return 0.0
+            reason = f"Нерентабельно: PnL={net_profit_usdt:.2f} < {self.min_profit_threshold} USDT (комиссии: {fees_usdt:.2f})"
+            self._log_rejection(reason)
+            return 0.0, reason
         
-        logger.debug(f"💰 Расчет объема: Уверенность={confidence:.2f} → {conf_factor*100:.0f}% от макс | Позиция: {base_position_usdt:.2f} USDT | Net PnL: {net_profit_usdt:.2f} USDT")
+        logger.debug(f"💰 Расчет объема: Уверенность={confidence:.2f} → {conf_factor*100:.0f}% | Позиция: {base_position_usdt:.2f} USDT | Net PnL: {net_profit_usdt:.2f} USDT")
         
-        return base_position_usdt
+        return base_position_usdt, "OK"
+    
+    def _log_rejection(self, reason: str):
+        """Логирование причины отказа в сделке."""
+        self.session_stats["rejected_trades"] += 1
+        # Нормализуем причину для группировки
+        reason_key = reason.split(":")[0].strip()
+        if reason_key not in self.session_stats["rejection_reasons"]:
+            self.session_stats["rejection_reasons"][reason_key] = 0
+        self.session_stats["rejection_reasons"][reason_key] += 1
+        logger.debug(f"🚫 Отказ в сделке #{self.session_stats['rejected_trades']}: {reason}")
     
     def _main_loop(self):
         """Основной цикл торговли."""
@@ -286,12 +317,15 @@ class TestNetRunner:
                         take_profit = entry_price * 0.96
                 
                 # Расчет размера позиции на основе уверенности и рентабельности
-                position_usdt = self._calculate_position_size(conf, self.balance_start, stop_dist_pct)
+                position_usdt, reject_reason = self._calculate_position_size(conf, self.balance_start, stop_dist_pct)
                 
                 if position_usdt <= 0:
-                    logger.info("⏸️ Пропуск сделки: объем не прошел фильтр рентабельности или уверенности")
+                    logger.info(f"⏸️ Пропуск сделки: {reject_reason}")
                     time.sleep(5)
                     continue
+                
+                # Обновляем телеметрию
+                self.session_stats["total_trades"] += 1
                 
                 # Конвертируем USDT в количество монет
                 qty = position_usdt / entry_price
@@ -373,9 +407,19 @@ class TestNetRunner:
                 time.sleep(2)
     
     def stop(self):
-        """Остановка всех компонентов."""
+        """Остановка всех компонентов и вывод итоговой телеметрии."""
         logger.info("🛑 Остановка TestNet Runner...")
         self.running = False
+        
+        # Фиксируем время окончания сессии
+        self.session_stats["end_time"] = datetime.now().isoformat()
+        
+        # Рассчитываем итоговую статистику
+        if self.session_stats["total_trades"] > 0:
+            self.session_stats["winrate"] = (self.session_stats["successful_trades"] / self.session_stats["total_trades"]) * 100
+        
+        # Выводим итоговый отчет
+        self._print_session_report()
         
         self.analyzer.stop()
         self.trade_calc.stop()
@@ -386,6 +430,44 @@ class TestNetRunner:
         self.context.term()
         
         logger.success("✅ TestNet Runner остановлен.")
+    
+    def _print_session_report(self):
+        """Вывод полного отчета по сессии."""
+        logger.info("=" * 60)
+        logger.info("📊 ИТОГОВЫЙ ОТЧЕТ ПО СЕССИИ")
+        logger.info("=" * 60)
+        logger.info(f"ID сессии: {self.session_stats['session_id']}")
+        logger.info(f"Начало: {self.session_stats['start_time']}")
+        logger.info(f"Конец: {self.session_stats.get('end_time', 'N/A')}")
+        logger.info(f"Выделенный баланс: {self.session_stats['allocated_balance']:.2f} USDT")
+        logger.info(f"Текущий баланс: {self.session_stats['current_balance']:.2f} USDT")
+        logger.info(f"Общий PnL: {self.session_stats['total_pnl']:+.2f} USDT")
+        logger.info(f"Макс. просадка: {self.session_stats['max_drawdown']:.2f}%")
+        logger.info("-" * 60)
+        logger.info(f"Всего сделок: {self.session_stats['total_trades']}")
+        logger.info(f"Успешных: {self.session_stats['successful_trades']}")
+        logger.info(f"Проваленных: {self.session_stats['failed_trades']}")
+        logger.info(f"Отказано: {self.session_stats['rejected_trades']}")
+        logger.info(f"Winrate: {self.session_stats['winrate']:.1f}%")
+        logger.info("-" * 60)
+        if self.session_stats["rejection_reasons"]:
+            logger.info("Причины отказов:")
+            for reason, count in self.session_stats["rejection_reasons"].items():
+                logger.info(f"  • {reason}: {count}")
+        else:
+            logger.info("Причины отказов: нет данных")
+        logger.info("-" * 60)
+        if self.session_stats["open_trades"]:
+            logger.info(f"Открытые позиции: {len(self.session_stats['open_trades'])}")
+            for trade in self.session_stats["open_trades"]:
+                logger.info(f"  • {trade}")
+        else:
+            logger.info("Открытые позиции: нет")
+        if self.session_stats["closed_trades"]:
+            logger.info(f"Закрытые позиции: {len(self.session_stats['closed_trades'])}")
+            for trade in self.session_stats["closed_trades"][-5:]:  # Последние 5
+                logger.info(f"  • {trade}")
+        logger.info("=" * 60)
 
 
 if __name__ == "__main__":
