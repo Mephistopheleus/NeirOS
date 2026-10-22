@@ -1,8 +1,10 @@
 import zmq
+from core.bus_helpers import recv_topic_payload
 import threading
 import time
 import yaml
 from loguru import logger
+from core.paths import CONFIG_PATH
 
 class RiskManager:
     """
@@ -11,13 +13,13 @@ class RiskManager:
     Выход: EXECUTION.ORDER (одобрено) или RISK.REJECT (отклонено)
     Ведёт состояние сессии: баланс, просадка, серия убытков, кулдауны.
     """
-    def __init__(self, symbol: str, sub_socket: zmq.Socket, pub_socket: zmq.Socket, config_path: str = "config/config.yaml"):
+    def __init__(self, symbol: str, sub_socket: zmq.Socket, pub_socket: zmq.Socket, config_path: str = None):
         self.symbol = symbol
         self.sub = sub_socket
         self.pub = pub_socket
         self.running = False
         self.lock = threading.Lock()
-        self.cfg = self._load_config(config_path)
+        self.cfg = self._load_config(config_path or CONFIG_PATH)
 
         # Состояние сессии
         self.balance = self.cfg.get("initial_balance", 1000.0)
@@ -52,11 +54,12 @@ class RiskManager:
     def _listen_loop(self):
         while self.running:
             try:
-                topic = self.sub.recv_string()
-                if topic == "TRADE.ORDER":
-                    order = self.sub.recv_json()
-                    result = self._evaluate(order)
-                    self._publish(result)
+                received = recv_topic_payload(self.sub)
+                if received is not None:
+                    topic, order = received
+                    if topic == "TRADE.ORDER":
+                        result = self._evaluate(order)
+                        self._publish(result)
             except zmq.ZMQError as e:
                 if self.running:
                     logger.warning(f"⚠️ RiskManager ZMQ error: {e}")
@@ -154,7 +157,8 @@ class RiskManager:
             if order["status"] == "EXECUTION_APPROVED":
                 logger.info(f"✅ RISK APPROVED | Qty: {order['qty']} | Entry: {order['entry_price']}")
             else:
-                logger.debug(f"⛔ RISK REJECT | {order['status']} | {order['reasoning']}")
+                # INFO: штатный финал цепочки — виден в консоли и смоук-тесте
+                logger.info(f"⛔ RISK REJECT | {order['status']} | {order['reasoning']}")
         except Exception as e:
             logger.error(f"❌ RiskManager publish error: {e}")
 

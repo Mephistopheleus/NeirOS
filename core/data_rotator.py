@@ -2,9 +2,13 @@ import os
 import pandas as pd
 import threading
 from loguru import logger
+from core.paths import DATA_DIR
 
 class DataRotator:
-    def __init__(self, symbol: str, base_path: str = "data", max_size_mb: int = 500, flush_rows: int = 100):
+    def __init__(self, symbol: str, base_path: str = None, max_size_mb: int = 500, flush_rows: int = 100):
+        # base_path=None → абсолютный путь к data/ внутри проекта (не зависит от cwd)
+        if base_path is None:
+            base_path = DATA_DIR
         # max_size_mb игнорируется для простоты CSV, но оставлен для совместимости API
         self.symbol = symbol
         self.base_path = base_path

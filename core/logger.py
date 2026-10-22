@@ -1,6 +1,7 @@
 import sys
 import os
 from loguru import logger
+from core.paths import LOGS_DIR
 
 def setup_logger(console_level: str = "INFO"):
     """
@@ -10,7 +11,9 @@ def setup_logger(console_level: str = "INFO"):
     """
     logger.remove()
 
-    log_dir = "logs"
+    # Абсолютный путь: лог всегда пишется в <PROJECT_ROOT>/logs,
+    # независимо от текущей рабочей директории запуска.
+    log_dir = LOGS_DIR
     os.makedirs(log_dir, exist_ok=True)
 
     # 🖥️ Консоль: только указанный уровень и выше
