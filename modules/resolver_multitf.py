@@ -1,4 +1,5 @@
 import zmq
+from core.bus_helpers import recv_topic_payload
 import threading
 import time
 import numpy as np
@@ -7,7 +8,7 @@ from loguru import logger
 class MultiTFResolver:
     """
     Card 3.3: Мульти-ТФ резолвер.
-    Вход: ANALYSIS.FORECAST (содержит прогнозы по всем ТФ)
+    Вход: ANALYSIS.FORECAST / ANALYSIS.AGGREGATED (содержит прогнозы по всем ТФ)
     Выход: TRADE.CONTEXT (взвешенный вердикт, entry/target/stop, уверенность)
     """
     def __init__(self, symbol: str, sub_socket: zmq.Socket, pub_socket: zmq.Socket):
@@ -35,11 +36,12 @@ class MultiTFResolver:
     def _listen_loop(self):
         while self.running:
             try:
-                topic = self.sub.recv_string()
-                if topic == "ANALYSIS.FORECAST":
-                    msg = self.sub.recv_json()
-                    with self.lock:
-                        self.latest_forecast = msg
+                received = recv_topic_payload(self.sub)
+                if received is not None:
+                    topic, msg = received
+                    if topic in ("ANALYSIS.FORECAST", "ANALYSIS.AGGREGATED"):
+                        with self.lock:
+                            self.latest_forecast = msg
             except zmq.ZMQError as e:
                 if self.running:
                     logger.warning(f"⚠️ Resolver ZMQ error: {e}")

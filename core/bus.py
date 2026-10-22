@@ -14,6 +14,7 @@ class BusManager:
         try:
             # PUB для данных (рассылка всем)
             self.pub_socket = self.context.socket(zmq.PUB)
+            self.pub_socket.setsockopt(zmq.SNDTIMEO, 1000)
             self.pub_socket.bind(f"tcp://*:{self.pub_port}")
             logger.info(f" PUB Socket bound on port {self.pub_port}")
 

@@ -5,23 +5,27 @@ from loguru import logger
 from modules.api_binance.rest_client import BinanceRESTClient
 from modules.api_binance.ws_client import BinanceWebSocket
 from core.data_rotator import DataRotator
+from core.paths import DATA_DIR
 
-class Aggregator:
-    """Card 2.3: Мульти-ТФ агрегатор. REST + WS по каждому ТФ → ZMQ PUB"""
-    def __init__(self, symbol: str, intervals: list = None, zmq_pub_socket: zmq.Socket = None, data_path: str = "data"):
+class MarketDataCollector:
+    """Card 2.3: Мульти-ТФ сборщик рыночных данных. REST + WS по каждому ТФ → ZMQ PUB.
+    (ранее — Aggregator; имя освобождено под будущий AnalysisAggregator)"""
+    def __init__(self, symbol: str, intervals: list = None, zmq_pub_socket: zmq.Socket = None, data_path: str = None):
         self.symbol = symbol
         self.intervals = intervals or ["5m", "15m", "1h", "4h"]
         self.pub_socket = zmq_pub_socket
+        # Абсолютный путь по умолчанию — не зависит от cwd запуска
+        self.data_path = data_path or DATA_DIR
         self.running = False
         
         self.rest = BinanceRESTClient()
-        self.rotator = DataRotator(symbol, base_path=data_path, flush_rows=50)
+        self.rotator = DataRotator(symbol, base_path=self.data_path, flush_rows=50)
         self.ws_clients = {}
         self.buffer = []
         self.lock = threading.Lock()
 
     def start(self):
-        logger.info(f"🔄 Aggregator starting for {self.symbol} on {self.intervals}...")
+        logger.info(f"🔄 MarketDataCollector starting for {self.symbol} on {self.intervals}...")
         self.running = True
         
         for tf in self.intervals:
@@ -31,7 +35,7 @@ class Aggregator:
             self.ws_clients[tf].start()
             
         threading.Thread(target=self._publish_loop, daemon=True).start()
-        logger.success("✅ Aggregator running (Multi-TF).")
+        logger.success("✅ MarketDataCollector running (Multi-TF).")
 
     def _load_history(self, tf: str):
         logger.info(f"📥 Loading REST history for {tf}...")
@@ -76,9 +80,9 @@ class Aggregator:
             time.sleep(0.5)
 
     def stop(self):
-        logger.info("🛑 Stopping Aggregator...")
+        logger.info("🛑 Stopping MarketDataCollector...")
         self.running = False
         for ws in self.ws_clients.values():
             ws.stop()
         self.rotator.force_close()
-        logger.info("✅ Aggregator stopped.")
+        logger.info("✅ MarketDataCollector stopped.")

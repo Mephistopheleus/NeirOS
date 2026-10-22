@@ -2,12 +2,14 @@ import pandas as pd
 import numpy as np
 import scipy.signal as signal
 import zmq
+from core.bus_helpers import recv_topic_payload
 import threading
 import time
 import json
 import os
 from loguru import logger
 from datetime import datetime
+from core.paths import DATA_DIR
 
 def _calc_ema(series: pd.Series, length: int) -> pd.Series:
     return series.ewm(span=length, adjust=False).mean()
@@ -35,11 +37,12 @@ class AnalyzerMath:
     Вход: DATA.CANDLE.* из ZMQ + CSV история
     Выход: ANALYSIS.FORECAST (прогноз цены, уверенность, S/R, тренды по ТФ)
     """
-    def __init__(self, symbol: str, sub_socket: zmq.Socket, pub_socket: zmq.Socket, data_path: str = "data"):
+    def __init__(self, symbol: str, sub_socket: zmq.Socket, pub_socket: zmq.Socket, data_path: str = None):
         self.symbol = symbol
         self.sub = sub_socket
         self.pub = pub_socket
-        self.data_path = data_path
+        # Абсолютный путь по умолчанию — не зависит от cwd запуска
+        self.data_path = data_path or DATA_DIR
         self.buffers = {tf: [] for tf in ["5m", "15m", "1h", "4h", "12h"]}
         self.running = False
         self.lock = threading.Lock()
@@ -80,14 +83,15 @@ class AnalyzerMath:
         """Подписка на ZMQ и маршрутизация по ТФ"""
         while self.running:
             try:
-                topic = self.sub.recv_string()
-                msg = self.sub.recv_json()
-                tf = topic.split(".")[-1].lower()
-                if tf in self.buffers:
-                    with self.lock:
-                        self.buffers[tf].append(msg)
-                        if len(self.buffers[tf]) > 300:
-                            self.buffers[tf] = self.buffers[tf][-300:]
+                received = recv_topic_payload(self.sub)
+                if received is not None:
+                    topic, msg = received
+                    tf = topic.split(".")[-1].lower()
+                    if tf in self.buffers:
+                        with self.lock:
+                            self.buffers[tf].append(msg)
+                            if len(self.buffers[tf]) > 300:
+                                self.buffers[tf] = self.buffers[tf][-300:]
             except zmq.ZMQError as e:
                 # Ошибки сокета (например, закрыт при shutdown)
                 if self.running:
@@ -117,7 +121,19 @@ class AnalyzerMath:
             if len(buf) < 50:
                 continue
             df = pd.DataFrame(buf)
-            df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
+            # Нормализуем timestamp: буфер может содержать и int-миллисекунды
+            # (ZMQ/CSV), и datetime-строки из старых CSV. to_datetime(unit='ms')
+            # на строках падает — сначала приводим колонку к числовому виду.
+            ts_num = pd.to_numeric(df["timestamp"], errors="coerce")
+            if ts_num.isna().any():
+                # нечисловые значения парсим как обычные даты
+                parsed = pd.to_datetime(df["timestamp"], errors="coerce")
+                ts_ms = parsed.astype("int64") // 1_000_000
+                ts_ms[ts_num.notna()] = ts_num[ts_num.notna()].astype("int64")
+            else:
+                ts_ms = ts_num.astype("int64")
+            df["timestamp"] = ts_ms
+            df = df[df["timestamp"] > 0]
             df.set_index("timestamp", inplace=True)
             
             res = self._analyze_tf(tf, df)
@@ -261,9 +277,10 @@ class AnalyzerMath:
                 z_type = "support" if center < current_price else "resistance"
                 
                 touches = len(c)
-                # ✅ ИСПРАВЛЕНО: idxmin() возвращает метку индекса, df.index[...] лишний и ломает тип
+                # Индекс df — int-миллисекунды (см. нормализацию timestamp),
+                # поэтому возраст считаем в мс, а не через timedelta.
                 closest_idx = df["close"].sub(center).abs().idxmin()
-                age = (df.index[-1] - closest_idx).total_seconds() / 60
+                age = abs(int(df.index[-1]) - int(closest_idx)) / 60000.0  # минут
                 
                 decay = 100 * self.tf_mult.get(tf, 1.0)
                 vol_ratio = 1.0

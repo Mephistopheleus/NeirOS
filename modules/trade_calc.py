@@ -1,9 +1,11 @@
 import math
 import zmq
+from core.bus_helpers import recv_topic_payload
 import threading
 import time
 import yaml
 from loguru import logger
+from core.paths import CONFIG_PATH
 
 class TradeCalc:
     """
@@ -11,14 +13,14 @@ class TradeCalc:
     Вход: TRADE.CONTEXT
     Выход: TRADE.ORDER (валидная заявка или REJECT с причиной)
     """
-    def __init__(self, symbol: str, sub_socket: zmq.Socket, pub_socket: zmq.Socket, config_path: str = "config/config.yaml"):
+    def __init__(self, symbol: str, sub_socket: zmq.Socket, pub_socket: zmq.Socket, config_path: str = None):
         self.symbol = symbol
         self.sub = sub_socket
         self.pub = pub_socket
         self.running = False
         self.lock = threading.Lock()
         
-        self.cfg = self._load_config(config_path)
+        self.cfg = self._load_config(config_path or CONFIG_PATH)
         self.risk_pct = self.cfg.get("risk_per_trade_pct", 0.01)
         self.min_rr = self.cfg.get("min_rr", 1.5)
         self.min_net_rr = self.cfg.get("min_net_rr", 1.2)
@@ -49,11 +51,12 @@ class TradeCalc:
     def _listen_loop(self):
         while self.running:
             try:
-                topic = self.sub.recv_string()
-                if topic == "TRADE.CONTEXT":
-                    ctx = self.sub.recv_json()
-                    order = self._calculate(ctx)
-                    self._publish(order)
+                received = recv_topic_payload(self.sub)
+                if received is not None:
+                    topic, ctx = received
+                    if topic == "TRADE.CONTEXT":
+                        order = self._calculate(ctx)
+                        self._publish(order)
             except zmq.ZMQError as e:
                 if self.running:
                     logger.warning(f"⚠️ TradeCalc ZMQ error: {e}")
@@ -207,7 +210,9 @@ class TradeCalc:
             if order["status"] == "VALID":
                 logger.info(f"✅ TRADE.ORDER VALID | Qty: {order['qty']} | Entry: {order['entry_price']} | RR: {order['rr_ratio']}")
             else:
-                logger.debug(f"⛔ TRADE.ORDER {order['status']} | {order['reasoning']}")
+                # INFO (не DEBUG): статусы REJECT — штатный финал цепочки,
+                # их должен видеть смоук-тест и живой консольный лог.
+                logger.info(f"⛔ TRADE.ORDER {order['status']} | {order['reasoning']}")
         except Exception as e:
             logger.error(f"❌ TradeCalc publish error: {e}")
 

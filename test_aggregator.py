@@ -3,7 +3,7 @@ import zmq
 from loguru import logger
 from core.logger import setup_logger
 from core.bus import BusManager
-from modules.aggregator import Aggregator
+from modules.market_data_collector import MarketDataCollector
 
 if __name__ == "__main__":
     setup_logger("INFO")
@@ -18,8 +18,8 @@ if __name__ == "__main__":
     sub.setsockopt_string(zmq.SUBSCRIBE, "DATA.CANDLE.5M")
     logger.info("👂 Test subscriber connected.")
     
-    # 3. Запускаем Агрегатор
-    agg = Aggregator("DOGEUSDT", "5m", zmq_pub_socket=bus.pub_socket)
+    # 3. Запускаем сборщик рыночных данных (бывший Aggregator)
+    agg = MarketDataCollector("DOGEUSDT", intervals=["5m"], zmq_pub_socket=bus.pub_socket)
     agg.start()
     
     try:

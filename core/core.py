@@ -6,11 +6,12 @@ import zmq
 from loguru import logger
 from core.bus import BusManager
 from core.loader import ModuleLoader
+from core.paths import MODULES_DIR
 
 class Core:
     def __init__(self):
         self.bus = BusManager(pub_port=5555, rep_port=5556)
-        self.loader = ModuleLoader("modules")
+        self.loader = ModuleLoader(MODULES_DIR)  # абсолютный путь — запуск из любого cwd
         self.pipeline = {}
         self.running = False
 
@@ -34,10 +35,15 @@ class Core:
         sub_an.connect("tcp://localhost:5555")
         sub_an.setsockopt_string(zmq.SUBSCRIBE, "DATA.CANDLE.")
         
-        # Resolver: слушает прогнозы анализатора
+        # AnalysisAggregator: слушает прогнозы анализаторов
+        sub_agg = ctx.socket(zmq.SUB)
+        sub_agg.connect("tcp://localhost:5555")
+        sub_agg.setsockopt_string(zmq.SUBSCRIBE, "ANALYSIS.FORECAST")
+        
+        # Resolver: слушает агрегированный сигнал (заглушка-агрегатор → резолвер)
         sub_res = ctx.socket(zmq.SUB)
         sub_res.connect("tcp://localhost:5555")
-        sub_res.setsockopt_string(zmq.SUBSCRIBE, "ANALYSIS.FORECAST")
+        sub_res.setsockopt_string(zmq.SUBSCRIBE, "ANALYSIS.AGGREGATED")
         
         # TradeCalc: слушает контекст от резолвера
         sub_tc = ctx.socket(zmq.SUB)
@@ -48,17 +54,24 @@ class Core:
         sub_rm = ctx.socket(zmq.SUB)
         sub_rm.connect("tcp://localhost:5555")
         sub_rm.setsockopt_string(zmq.SUBSCRIBE, "TRADE.ORDER")
+        
+        # ExecutionDealer: слушает одобренные риск-менеджером ордера
+        sub_dealer = ctx.socket(zmq.SUB)
+        sub_dealer.connect("tcp://localhost:5555")
+        sub_dealer.setsockopt_string(zmq.SUBSCRIBE, "EXECUTION.ORDER")
         # =====================================================================
         
         # Импорт классов (после loader они уже в sys.modules)
-        from modules.aggregator import Aggregator
+        from modules.market_data_collector import MarketDataCollector
         from modules.analyzer_math import AnalyzerMath
+        from modules.analysis_aggregator import AnalysisAggregator
         from modules.resolver_multitf import MultiTFResolver
         from modules.trade_calc import TradeCalc
         from modules.risk_manager import RiskManager
+        from modules.execution_dealer import ExecutionDealer
         
         # Инстанцирование (все параметры явно)
-        self.pipeline["aggregator"] = Aggregator(
+        self.pipeline["collector"] = MarketDataCollector(
             symbol="DOGEUSDT",
             intervals=["5m", "15m", "1h", "4h"],
             zmq_pub_socket=self.bus.pub_socket
@@ -66,6 +79,11 @@ class Core:
         self.pipeline["analyzer"] = AnalyzerMath(
             symbol="DOGEUSDT",
             sub_socket=sub_an,
+            pub_socket=self.bus.pub_socket
+        )
+        self.pipeline["aggregator"] = AnalysisAggregator(
+            symbol="DOGEUSDT",
+            sub_socket=sub_agg,
             pub_socket=self.bus.pub_socket
         )
         self.pipeline["resolver"] = MultiTFResolver(
@@ -83,11 +101,20 @@ class Core:
             sub_socket=sub_rm,
             pub_socket=self.bus.pub_socket
         )
+        self.pipeline["dealer"] = ExecutionDealer(
+            symbol="DOGEUSDT",
+            sub_socket=sub_dealer,
+            pub_socket=self.bus.pub_socket
+        )
         
         # Запуск всех модулей
         for name, mod in self.pipeline.items():
             mod.start()
             logger.debug(f"✅ Pipeline stage started: {name}")
+
+        # Ждём установления PUB→SUB подписок (slow-joiner problem):
+        # без этой паузы первые кадры collector теряются.
+        time.sleep(1.0)
             
         logger.success(f"📦 Total modules loaded: {len(self.loader.loaded_modules)}")
         logger.success("✨ SYSTEM READY. Press Ctrl+C to stop.")
